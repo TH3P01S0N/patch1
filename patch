@@ -1,0 +1,116 @@
+diff -ruNp srcclean/minix/include/Makefile srcalmostclean/minix/include/Makefile
+--- srcclean/minix/include/Makefile	Tue Oct 27 04:58:36 2015
++++ srcalmostclean/minix/include/Makefile	Sat Oct 31 22:00:20 2015
+@@ -2,7 +2,8 @@
+ 
+ NOOBJ=		# defined
+ 
+-INCS+=	env.h fetch.h lib.h libutil.h varargs.h configfile.h
++INCS+=	env.h fetch.h lib.h libutil.h varargs.h configfile.h 
++mycallib.h
+ 
+ .include <bsd.own.mk>
+ 
+diff -ruNp srcclean/minix/include/minix/callnr.h srcalmostclean/minix/include/minix/callnr.h
+--- srcclean/minix/include/minix/callnr.h	Tue Oct 27 04:58:36 2015
++++ srcalmostclean/minix/include/minix/callnr.h	Sat Oct 31 21:48:13 2015
+@@ -58,8 +58,11 @@
+ #define PM_GETEPINFO		(PM_BASE + 45)
+ #define PM_GETPROCNR		(PM_BASE + 46)
+ #define PM_GETSYSINFO		(PM_BASE + 47)
++#define PM_MYCALLS		(PM_BASE + 48)
++#define PM_MYCALLS2 		(PM_BASE + 49)
+ 
+-#define NR_PM_CALLS		48	/* highest number from base plus one */
++#define NR_PM_CALLS		50	/* highest number from base plus 
++one */
+ 
+ /*===========================================================================*
+  *				Calls to VFS				     *
+diff -ruNp srcclean/minix/include/mycalllib.h srcalmostclean/minix/include/mycalllib.h
+--- srcclean/minix/include/mycalllib.h	Thu Jan  1 00:00:00 1970
++++ srcalmostclean/minix/include/mycalllib.h	Sat Oct 31 21:57:34 2015
+@@ -0,0 +1,12 @@
++#include <lib.h>
++#include <unistd.h>
++int mycalls()
++{
++	message m;
++	return( _syscall(PM_PROC_NR,PM_MYCALLS, &m) );
++}
++int mycalls2()
++{
++	message m;
++	return (_syscall(PM_PROC_NR, PM_MYCALLS2, &m) );
++}
+diff -ruNp srcclean/minix/servers/pm/misc.c srcalmostclean/minix/servers/pm/misc.c
+--- srcclean/minix/servers/pm/misc.c	Tue Oct 27 04:58:46 2015
++++ srcalmostclean/minix/servers/pm/misc.c	Sat Oct 31 22:06:35 2015
+@@ -59,6 +59,14 @@ static char *uts_tbl[] = {
+ unsigned long calls_stats[NR_PM_CALLS];
+ #endif
+ 
++//mycalls
++/*int mycalls()
++{
++	printf("EN LA CACAAAAA");
++	RETURN 0;
++}
++*/
++
+ /*===========================================================================*
+  *				do_sysuname				     *
+  *===========================================================================*/
+@@ -426,3 +434,16 @@ int do_getrusage()
+ 	return sys_datacopy(SELF, (vir_bytes)&r_usage, who_e,
+ 		m_in.m_lc_pm_rusage.addr, (vir_bytes) sizeof(r_usage));
+ }
++// do_mycall
++int do_mycalls()
++{
++	printf("Soy la llamada 1\n");
++	return 0;
++}
++int do_mycalls2()
++{
++	printf("Soy la llamada 2\n");
++	return 0;
++}
++
++
+diff -ruNp srcclean/minix/servers/pm/proto.h srcalmostclean/minix/servers/pm/proto.h
+--- srcclean/minix/servers/pm/proto.h	Tue Oct 27 04:58:46 2015
++++ srcalmostclean/minix/servers/pm/proto.h	Sat Oct 31 22:05:47 2015
+@@ -46,7 +46,8 @@ int do_getepinfo(void);
+ int do_svrctl(void);
+ int do_getsetpriority(void);
+ int do_getrusage(void);
+-
++int do_mycalls(void);
++int do_mycalls2(void);
+ /* schedule.c */
+ void sched_init(void);
+ int sched_start_user(endpoint_t ep, struct mproc *rmp);
+diff -ruNp srcclean/minix/servers/pm/table.c srcalmostclean/minix/servers/pm/table.c
+--- srcclean/minix/servers/pm/table.c	Tue Oct 27 04:58:46 2015
++++ srcalmostclean/minix/servers/pm/table.c	Sat Oct 31 22:04:17 2015
+@@ -5,7 +5,8 @@
+ #define _TABLE
+ 
+ #include "pm.h"
+-#include <minix/callnr.h>
++//#include <minix/callnr.h>
++#include </usr/src/minix/include/minix/callnr.h>
+ #include <signal.h>
+ #include "mproc.h"
+ 
+@@ -58,5 +59,7 @@ int (* const call_vec[NR_PM_CALLS])(void) = {
+ 	CALL(PM_EXEC_RESTART)	= do_execrestart,
+ 	CALL(PM_GETEPINFO)	= do_getepinfo,		/* getepinfo(2) */
+ 	CALL(PM_GETPROCNR)	= do_getprocnr,		/* getprocnr(2) */
+-	CALL(PM_GETSYSINFO)	= do_getsysinfo		/* getsysinfo(2) */
+-};
++	CALL(PM_GETSYSINFO)	= do_getsysinfo,	/* getsysinfo(2) */
++  	CALL(PM_MYCALLS)  	= do_mycalls,		/* 48 = (stty)*/
++	CALL(PM_MYCALLS2)	= do_mycalls2
++  };
